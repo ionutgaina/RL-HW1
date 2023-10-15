@@ -9,7 +9,7 @@ sudo python3 checker/topo.py
 This will open 9 terminals, 6 hosts and 3 for the switches. On the switch terminal you will run 
 
 ```bash
-make run_witch
+make run_switch
 ```
 
 The hosts have the following IP addresses.
