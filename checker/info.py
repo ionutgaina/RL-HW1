@@ -19,7 +19,7 @@ BASE_FORMATS = {
         "router_if_name": "r-{}",
         "host_if_name": "h-{}",
         "router_ip": "192.168.1.{}",
-        "router_name": "router-{}",
+        "switch_name": "switch-{}",
         "host_ip": "192.168.1.{}",
         "router_mac": "de:fe:c8:ed:{1:02X}:{0:02X}",
         "host_mac": "de:ad:be:ef:00:{:02X}",
@@ -29,8 +29,8 @@ BASE_FORMATS = {
         "r2r_ip2": "192.{}.{}.2",
         "r2r_if_name": "rr-{}-{}",
         "r2r_mac": "ca:fe:ba:be:{:02X}:{:02X}",
-        "out_file": "router_{}_out",
-        "err_file": "router_{}_err",
+        "out_file": "switch_{}_out",
+        "err_file": "switch_{}_err",
         "rtable": "rtable{}.txt"
 }
 

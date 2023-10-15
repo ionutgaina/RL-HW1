@@ -35,7 +35,7 @@ class FullTopo(Topo):
     def build(self, nr=2, nh=2):
         routers = []
         for i in range(nr):
-            routers.append(self.addHost(info.get("router_name", i)))
+            routers.append(self.addHost(info.get("switch_name", i)))
 
         for i in range(nr):
             for j in range(i + 1, nr):
@@ -61,7 +61,7 @@ class FullNM(object):
         self.n_hosts = n_hosts
         self.i = 0
         for i in range(n_routers):
-            r = self.net.get(info.get("router_name", i))
+            r = self.net.get(info.get("switch_name", i))
             hosts = []
             for j in range(n_hosts):
                 hidx = i * n_hosts + j
