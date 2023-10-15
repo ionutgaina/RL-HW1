@@ -1,9 +1,10 @@
 #!/usr/bin/python3
-
 import sys
 import struct
 import wrapper
-from wrapper import recv_from_any_link, send_to_link
+import threading
+import time
+from wrapper import recv_from_any_link, send_to_link, get_switch_mac
 
 def parse_ethernet_header(data):
     # Unpack the header fields from the byte array
@@ -12,16 +13,16 @@ def parse_ethernet_header(data):
     src_mac = data[6:12]
     
     # Extract ethertype. Under 802.1Q, this may be the bytes from the VLAN TAG
-    ethertype = (data[12] << 8) + data[13]
+    ether_type = (data[12] << 8) + data[13]
 
     vlan_id = None
     # Check for VLAN tag (0x8100 in network byte order is b'\x81\x00')
     if ether_type == b'\x81\x00':
         vlan_tci = int.from_bytes(frame[14:16], byteorder='big')
         vlan_id = vlan_tci & 0x0FFF  # extract the 12-bit VLAN ID
-        ethertype = (frame[16] << 8) + frame[17]
+        ether_type = (frame[16] << 8) + frame[17]
 
-    return dest_mac, src_mac, ethertype, vlan_id
+    return dest_mac, src_mac, ether_type, vlan_id
 
 def send_bdpu_every_sec():
     while True:
@@ -33,7 +34,6 @@ def main():
     # init returns the max interface number. Our interfaces
     # are 0, 1, 2, ..., init_ret value + 1
     interfaces = range(0, wrapper.init(sys.argv[1:]))
-
 
     # Create and start a new thread that deals with sending BDPU
     t = threading.Thread(target=send_bdpu_every_sec)
@@ -57,6 +57,7 @@ def main():
         print(f'EtherType: {ethertype}')
 
         print("Received frame of size {} on interface {}".format(length, interface))
+        print("Switch MAC", ':'.join(f'{b:02x}' for b in get_switch_mac()))
 
         # TODO: Implement forwarding with learning
         # TODO: Implement VLAN support

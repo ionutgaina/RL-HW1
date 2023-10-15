@@ -15,6 +15,9 @@ lib.send_to_link.restype = ctypes.c_int
 lib.init.argtypes = (ctypes.c_int, ctypes.POINTER(ctypes.c_char_p))
 lib.init.restype = ctypes.c_int
 
+lib.get_interface_mac.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_uint8)]
+lib.get_interface_mac.restype = None
+
 def init(argv_p):
     # Get the command-line arguments using sys.argv
     argv = [arg.encode('utf-8') for arg in argv_p]  # Convert each argument to bytes
@@ -51,3 +54,14 @@ def send_to_link(interface, buffer, length):
 
     # Call the C function
     result = lib.send_to_link(interface, c_buf, c_len)
+
+def get_switch_mac():
+    # Create a buffer for the MAC address
+    mac_buffer = (ctypes.c_uint8 * 6)()
+    
+    # Call the get_inferface mac function.
+    # Our switch should have only 1 MAC and such
+    # we return the MAC from interface 0
+    lib.get_interface_mac(0, mac_buffer)
+    
+    return bytes(mac_buffer)
