@@ -24,6 +24,11 @@ def parse_ethernet_header(data):
 
     return dest_mac, src_mac, ether_type, vlan_id
 
+def create_vlan_tag(vlan_id):
+    # 0x8100 for the Ethertype for 802.1Q
+    # vlan_id & 0x0FFF ensures that only the last 12 bits are used
+    return struct.pack('!H', 0x8100) + struct.pack('!H', vlan_id & 0x0FFF)
+
 def send_bdpu_every_sec():
     while True:
         # TODO Send BDPU every second if necessary
@@ -51,6 +56,9 @@ def main():
         # Print the MAC src and MAC dst in human readable format
         dest_mac = ':'.join(f'{b:02x}' for b in dest_mac)
         src_mac = ':'.join(f'{b:02x}' for b in src_mac)
+
+        # Note. Adding a VLAN tag can be as easy as
+        # tagged_frame = data[0:12] + create_vlan_tag(10) + data[12:]
 
         print(f'Destination MAC: {dest_mac}')
         print(f'Source MAC: {src_mac}')
