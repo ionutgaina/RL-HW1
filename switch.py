@@ -38,7 +38,9 @@ def main():
 
     # init returns the max interface number. Our interfaces
     # are 0, 1, 2, ..., init_ret value + 1
-    interfaces = range(0, wrapper.init(sys.argv[1:]))
+    switch_id = sys.argv[1]
+    interfaces = range(0, wrapper.init(sys.argv[2:]))
+    print("Starting switch with id {}".format(switch_id))
 
     # Create and start a new thread that deals with sending BDPU
     t = threading.Thread(target=send_bdpu_every_sec)

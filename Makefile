@@ -7,6 +7,8 @@ LDFLAGS=
 CFLAGS=-c -Wall -Werror -Wno-error=unused-variable
 CC=gcc
 
+SWITCH_ID ?= 1
+
 # Automatic generation of some important lists
 OBJECTS=$(SOURCES:.c=.o)
 INCFLAGS=$(foreach TMP,$(INCPATHS),-I$(TMP))
@@ -27,4 +29,4 @@ clean:
 	rm -rf $(OBJECTS)  hosts_output router_* dlink.so
 
 run_switch: all
-	python3 switch.py $$(ifconfig -a | grep -o '^[^ :]*' | grep -v 'lo' | tr '\n' ' ')
+	python3 switch.py $(SWITCH_ID) $$(ifconfig -a | grep -o '^[^ :]*' | grep -v 'lo' | tr '\n' ' ')
