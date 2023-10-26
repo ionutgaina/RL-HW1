@@ -56,7 +56,7 @@ int send_to_link(int intidx, char *frame_data, size_t len)
 ssize_t receive_from_link(int intidx, char *frame_data)
 {
 	ssize_t ret;
-	ret = read(interfaces[intidx], frame_data, MAX_PACKET_LEN);
+  ret = read(interfaces[intidx], frame_data, MAX_PACKET_LEN);
 	return ret;
 }
 
@@ -88,7 +88,8 @@ int recv_from_any_link(char *frame_data, size_t *length) {
 		for (int i = 0; i < SWITCH_NUM_INTERFACES; i++) {
 			if (FD_ISSET(interfaces[i], &set)) {
 				ssize_t ret = receive_from_link(i, frame_data);
-				DIE(ret < 0, "receive_from_link");
+        if (ret < 0)
+          continue;
 				*length = ret;
 				return i;
 			}
