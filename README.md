@@ -20,7 +20,6 @@ host2 192.168.1.3
 host3 192.168.1.4
 host4 192.168.1.5
 host5 192.168.1.6
-host6 192.168.1.7
 ```
 
 We will be testing using the ICMP. For example, from host0 we will run:
