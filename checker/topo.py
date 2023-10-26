@@ -75,7 +75,7 @@ class FullNM(object):
         for i, (router, hosts) in enumerate(self.routers):
             for j, host in enumerate(hosts):
                 hidx = i * len(hosts) + j
-                host_ip = info.get("host_ip", hidx)
+                host_ip = info.get("host_ip", hidx + 1)
                 router_ip = info.get("router_ip", hidx + 100)
                 host_if = info.get("host_if_name", hidx)
                 router_if = info.get("router_if_name", j)
@@ -175,17 +175,33 @@ class FullNM(object):
         for i, (router, hosts) in enumerate(self.routers):
             for j, host in enumerate(hosts):
                 for h in range(len(self.hosts)):
-                    ip = info.get("host_ip", h)
-                    new_entry = "{} host{}\n".format(ip, h)
+                    ip = info.get("host_ip", h + 1)
+                    new_entry = "{} host{}\n".format(ip , h)
 
-                    if new_entry not in entries:
+                    ok = 0
+                    for e in entries:
+                        if "host{}".format(h) in e and "local" not in e:
+                            entries.remove(e)
+                            entries.add(new_entry)
+                            ok = 1
+                            break
+
+                    for e in entries:
+                        if "h{}".format(h) in e and "local" not in e and "host" not in e:
+                            entries.remove(e)
+                            entries.add(new_entry)
+                            break
+                    
+                    if ok == 0 and new_entry not in entries:
                         entries.add(new_entry)
                         lines.append(new_entry)
 
         fd, path = tempfile.mkstemp()
         try:
             with os.fdopen(fd, "w") as tmp:
-                tmp.writelines(lines)
+                for i in entries:
+                    tmp.writelines(i)
+                #tmp.writelines(lines)
 
             shutil.copy(path, "/etc/hosts")
         finally:

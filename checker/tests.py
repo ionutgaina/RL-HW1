@@ -185,8 +185,8 @@ def icmp_a(testname):
     router = TESTS[testname].router
     r_mac = info.get("host_mac", hp)
     s_mac = info.get("host_mac", hs)
-    s_ip = info.get("host_ip", hs)
-    target_ip = info.get("host_ip", hp)
+    s_ip = info.get("host_ip", hs + 1)
+    target_ip = info.get("host_ip", hp + 1)
 
     return [Ether(src=s_mac, dst=r_mac) / IP(src=s_ip, dst=target_ip) / ICMP()]
 
