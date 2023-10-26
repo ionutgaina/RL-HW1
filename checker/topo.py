@@ -237,7 +237,7 @@ class FullNM(object):
             if int(router.cmd("ps -aux | grep {} | wc -l".format(rname))) == 1:
                 #cmd = 'bash -c "exec -a {} ./switch {} > {} 2> {} &"'.format(rname, ifaces,
                  #                               out, err)
-                cmd = 'bash -c "exec -a {} python3 switch.py 1 $(ifconfig -a | grep -o \'^[^ :]*\' | grep -v \'lo\' | tr \'\n\' \' \') > {} 2> {} &"'.format(rname, out, err)
+                cmd = 'bash -c "exec -a {} python3 switch.py {} $(ifconfig -a | grep -o \'^[^ :]*\' | grep -v \'lo\' | tr \'\n\' \' \') > {} 2> {} &"'.format(rname, i, out, err)
                 print("[INFO] Starting {}".format(rname))
                 router.cmd(cmd)
         time.sleep(3)
