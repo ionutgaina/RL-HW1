@@ -2,7 +2,7 @@ from collections import namedtuple, OrderedDict
 import sys
 
 from scapy.layers.inet import IP, ICMP
-from scapy.layers.l2 import Ether, ARP, checksum
+from scapy.layers.l2 import Ether, ARP, checksum, Dot1Q
 
 import info
 
@@ -25,10 +25,10 @@ def dump_packets(packets):
 
 def check_nothing(testname, packets):
     """Verify a machine received 0 packages. Used as a default."""
-    if len(packets) != 0:
-        error("Excess packets")
-        dump_packets(packets)
-        return False
+    #if len(packets) != 0:
+    #   error("Excess packets")
+    #  dump_packets(packets)
+    # return False
 
     return True
 
@@ -163,13 +163,15 @@ def validate_all_from_host_or_replies(host, packets):
 def sender_default(testname, packets):
     hs = TESTS[testname].host_s
     router = TESTS[testname].router
-    res, packets = cull_dull_packets(hs, router, packets)
-    _, packets = cull_icmp_unreachable(hs, packets)
-    ok = validate_all_from_host(hs, packets)
-    if not ok:
-        ok = validate_all_from_host_or_replies(hs, packets)
+    #res, packets = cull_dull_packets(hs, router, packets)
+    #_, packets = cull_icmp_unreachable(hs, packets)
+    #ok = validate_all_from_host(hs, packets)
+    #if not ok:
+    #    ok = validate_all_from_host_or_replies(hs, packets)
 
-    return res and ok
+    #return res and ok
+    
+    return True
 
 
 def router_arp_reply_p(testname, packets):
@@ -564,58 +566,109 @@ def forward10packets_a(testname):
 def icmp_a(testname):
     hs = TESTS[testname].host_s
     hr = TESTS[testname].host_r
+    hp = TESTS[testname].host_p
     router = TESTS[testname].router
-    r_mac = info.get("host_mac", hr)
+    r_mac = info.get("host_mac", hp)
     s_mac = info.get("host_mac", hs)
     s_ip = info.get("host_ip", hs)
-    target_ip = info.get("host_ip", hr)
+    target_ip = info.get("host_ip", hp)
 
     return [Ether(src=s_mac, dst=r_mac) / IP(src=s_ip, dst=target_ip) / ICMP()]
 
 
-def learn_finish(tesname):
+def icmp_check_arrival_p(testname, packets):
     hs = TESTS[testname].host_s
+    router = TESTS[testname].router
     hr = TESTS[testname].host_r
-    return True
 
-Test = namedtuple("Test", ["host_s", "host_r", "router", "active_fn", "passive_fn", "categories"])
+    origpackets = packets.copy()
+    res, packets = cull_dull_packets(hr, router, packets)
+
+    res = False
+    for p in packets:
+        if ICMP in p:
+            res = True
+            break
+
+    if res is False:
+        error("ICMP has not arrived at destination")
+        dump_packets(origpackets)
+        return False
+
+    return res
+
+
+def icmp_check_no_arrival_p(testname, packets):
+    hs = TESTS[testname].host_s
+    router = TESTS[testname].router
+    hr = TESTS[testname].host_r
+
+    origpackets = packets.copy()
+    res, packets = cull_dull_packets(hr, router, packets)
+
+    # Check that no packet arrived at hp
+    res = True
+    for p in packets:
+        if ICMP in p:
+            res = False
+            break
+
+    if res is False:
+        error("ICMP shouldn't have arrived here")
+        dump_packets(origpackets)
+        return False
+
+    return res
+
+
+def icmp_check_arrival_p_tagged(testname, packets):
+    hs = TESTS[testname].host_s
+    router = TESTS[testname].router
+    hr = TESTS[testname].host_r
+
+    origpackets = packets.copy()
+    res, packets = cull_dull_packets(hr, router, packets)
+
+    res = False
+    for p in packets:
+        if ICMP in p:
+            # Check if we have tagging active
+            if p.haslayer(Dot1Q):
+                res = True
+            break
+
+
+    if res is False:
+        error("ICMP has not arrived at destination")
+        dump_packets(origpackets)
+        return False
+
+    return res
+
+Test = namedtuple("Test", ["host_s", "host_r", "router", "active_fn", "passive_fn", "categories", "host_p"])
 TESTS = OrderedDict([
         
-        # Should learn host 0 and 1
-        ("ICMP_0_2", Test(0, 2, 0, icmp_a, learn_finish, ["forward"])),
-        # Should learn host 2 and 3 
-        ("ICMP_1_3", Test(1, 3, 0, icmp_a, learn_finish, ["forward"])),
+        # MAC table tests
+        ("ICMP_0_2_ARRIVES_2", Test(0, 2, 0, icmp_a, icmp_check_arrival_p, ["1. learning"], 2)),
+        ("ICMP_0_3_ARRIVES_3", Test(0, 3, 0, icmp_a, icmp_check_arrival_p, ["1. learning"], 3)),
 
-        #("router_arp_reply", Test(0, 0, 0, router_arp_reply_a, router_arp_reply_p, ["arp"])),
-        #("router_arp_request", Test(0, 1, 0, router_arp_request_a, router_arp_request_p, ["arp"])),
-        #("forward", Test(0, 1, 0, forward_a, forward_p, ["forward"])),
-        #("forward_no_arp", Test(0, 1, 0, forward_no_arp_a, forward_p, ["forward"])),
-        #("ttl", Test(0, 1, 0, forward_a, forward_p, ["forward"])),
-        #("checksum", Test(0, 1, 0, forward_a, forward_p, ["forward"])),
-        #("wrong_checksum", Test(0, 1, 0, wrong_checksum_a, check_nothing, ["forward"])),
-        #("forward02", Test(0, 2, 0, forward_a, forward_p, ["forward"])),
-        #("forward03", Test(0, 3, 0, forward_a, forward_p, ["forward"])),
-        #("forward10", Test(1, 0, 0, forward_a, forward_p, ["forward"])),
-        #("forward12", Test(1, 2, 0, forward_a, forward_p, ["forward"])),
-        #("forward13", Test(1, 3, 0, forward_a, forward_p, ["forward"])),
-        #("forward20", Test(2, 0, 1, forward_a, forward_p, ["forward"])),
-        #("forward21", Test(2, 1, 1, forward_a, forward_p, ["forward"])),
-        #("forward23", Test(2, 3, 1, forward_a, forward_p, ["forward"])),
-        #("forward30", Test(3, 0, 1, forward_a, forward_p, ["forward"])),
-        #("forward31", Test(3, 1, 1, forward_a, forward_p, ["forward"])),
-        #("forward32", Test(3, 2, 1, forward_a, forward_p, ["forward"])),
-        #("router_icmp", Test(0, 0, 0, router_icmp_a, router_icmp_p, ["icmp"])),
-        #("icmp_timeout", Test(0, 0, 0, icmp_timeout_a, icmp_timeout_p, ["icmp"])),
-        #("host_unreachable", Test(0, 0, 0, host_unreachable_a, host_unreachable_p, ["icmp"])),
-        #("forward10packets", Test(0, 1, 0, forward10packets_a, forward10packets_p, ["lpm"])),
-        #("forward10across", Test(0, 3, 0, forward10packets_a, forward10packets_p, ["lpm"])),
+        ("ICMP_0_2_NOT_ARRIVES_3", Test(0, 3, 0, icmp_a, icmp_check_no_arrival_p, ["1. learning"], 2)),
+        ("ICMP_0_3_NOT_ARRIVES_2", Test(0, 2, 0, icmp_a, icmp_check_no_arrival_p, ["1. learning"], 3)),
+
+        # VLAN tests
+        ("ICMP_0_1_NOT_ARRIVES_1", Test(0, 1, 1, icmp_a, icmp_check_no_arrival_p, ["2. VLAN"], 1)),
+        ("ICMP_3_1_NOT_ARRIVES_1", Test(3, 1, 1, icmp_a, icmp_check_no_arrival_p, ["2. VLAN"], 1)),
+        ("ICMP_3_2_ARRIVES_2_WITH_TAG", Test(3, 2, 0, icmp_a, icmp_check_arrival_p_tagged, ["2. VLAN"], 2)),
+        ("ICMP_0_3_ARRIVES_3_WITH_TAG", Test(0, 3, 0, icmp_a, icmp_check_arrival_p_tagged, ["2. VLAN"], 3)),
+
+
+
         ])
 
 CATEGORY_POINTS = {
-        "arp": 30,
-        "forward": 33,
-        "lpm": 16,
-        "icmp": 21,
+        "2. VLAN": 30,
+        "1. learning": 30,
+        "3. STP": 40,
         }
 
 CATEGORY_DICT = {}

@@ -221,10 +221,10 @@ class FullNM(object):
             if int(router.cmd("ps -aux | grep {} | wc -l".format(rname))) == 1:
                 #cmd = 'bash -c "exec -a {} ./switch {} > {} 2> {} &"'.format(rname, ifaces,
                  #                               out, err)
-                cmd = 'bash -c "exec -a {} make run_switch > {} 2> {} &"'.format(rname, out, err)
-                print("Starting {}".format(rname))
+                cmd = 'bash -c "exec -a {} python3 switch.py 1 $(ifconfig -a | grep -o \'^[^ :]*\' | grep -v \'lo\' | tr \'\n\' \' \') > {} 2> {} &"'.format(rname, out, err)
+                print("[INFO] Starting {}".format(rname))
                 router.cmd(cmd)
-        time.sleep(5)
+        time.sleep(3)
 
     def setup_capture(self, testname, log):
         nr = len(self.routers)
@@ -344,11 +344,19 @@ def main(run_tests=False, run=None):
     nm = FullNM(net, info.N_ROUTERS, info.N_HOSTSEACH)
 
     nm.setup()
+    viz_cats = []
+    points = {}
 
     if run_tests:
         total_points = 0
         print("{:=^85}\n".format(" Running tests "))
         for (testname, test) in tests.TESTS.items():
+            
+            if test.categories[0] not in viz_cats:
+                print(">> Running sets for {}".format(test.categories[0]))
+                print("")
+                viz_cats.append(test.categories[0])
+
             skipped = False
 
             if should_skip(testname):
@@ -365,7 +373,7 @@ def main(run_tests=False, run=None):
             if not skipped and passed:
                 for cat in test.categories:
                     current_points += tests.CATEGORY_POINTS[cat] / tests.CATEGORY_DICT[cat]
-
+            
             print("{: >20} {:.>50} {: >8} [{: >2}]".format(testname, "", str_status, round(current_points)))
             if str_status != "SKIPPED":
                 time.sleep(2)
