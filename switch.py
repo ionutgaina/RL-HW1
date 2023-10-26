@@ -4,7 +4,7 @@ import struct
 import wrapper
 import threading
 import time
-from wrapper import recv_from_any_link, send_to_link, get_switch_mac
+from wrapper import recv_from_any_link, send_to_link, get_switch_mac, get_interface_name
 
 def parse_ethernet_header(data):
     # Unpack the header fields from the byte array
@@ -35,16 +35,23 @@ def send_bdpu_every_sec():
         time.sleep(1)
 
 def main():
-
     # init returns the max interface number. Our interfaces
     # are 0, 1, 2, ..., init_ret value + 1
     switch_id = sys.argv[1]
-    interfaces = range(0, wrapper.init(sys.argv[2:]))
-    print("Starting switch with id {}".format(switch_id))
+
+    num_interfaces = wrapper.init(sys.argv[2:])
+    interfaces = range(0, num_interfaces)
+
+    print("# Starting switch with id {}".format(switch_id), flush=True)
+    print("[INFO] Switch MAC", ':'.join(f'{b:02x}' for b in get_switch_mac()))
 
     # Create and start a new thread that deals with sending BDPU
     t = threading.Thread(target=send_bdpu_every_sec)
     t.start()
+
+    # Printing interface names
+    for i in interfaces:
+        print(get_interface_name(i))
 
     while True:
         # Note that data is of type bytes([...]).
@@ -66,16 +73,14 @@ def main():
         print(f'Source MAC: {src_mac}')
         print(f'EtherType: {ethertype}')
 
-        print("Received frame of size {} on interface {}".format(length, interface))
-        print("Switch MAC", ':'.join(f'{b:02x}' for b in get_switch_mac()))
+        print("Received frame of size {} on interface {}".format(length, interface), flush=True)
 
         # TODO: Implement forwarding with learning
         # TODO: Implement VLAN support
         # TODO: Implement STP support
-        
+
         # data is of type bytes.
         # send_to_link(i, data, length)
-
 
 if __name__ == "__main__":
     main()
