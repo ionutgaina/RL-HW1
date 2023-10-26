@@ -369,9 +369,10 @@ def main(run_tests=False, run=None):
         for (testname, test) in tests.TESTS.items():
             
             if test.categories[0] not in viz_cats:
-                print(">> Running sets for {}".format(test.categories[0]))
+                print(">> Running tests for {}".format(test.categories[0]))
                 print("")
                 viz_cats.append(test.categories[0])
+                points[test.categories[0]] = 0
 
             skipped = False
 
@@ -389,11 +390,18 @@ def main(run_tests=False, run=None):
             if not skipped and passed:
                 for cat in test.categories:
                     current_points += tests.CATEGORY_POINTS[cat] / tests.CATEGORY_DICT[cat]
+            else:
+                current_points = -9999999
+
+            points[test.categories[0]] += current_points
             
-            print("{: >20} {:.>50} {: >8} [{: >2}]".format(testname, "", str_status, round(current_points)))
+            print("{: >20} {:.>50} {: >8}".format(testname, "", str_status, round(0 if current_points < 0 else current_points)))
             if str_status != "SKIPPED":
                 time.sleep(2)
-            total_points += current_points
+        
+        for k,v in points.items():
+            if v > 0:
+                total_points += v
 
         print(f"\nTOTAL: {round(total_points)}/100")
     elif run is not None:
