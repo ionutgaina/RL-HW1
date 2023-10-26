@@ -22,6 +22,10 @@ int send_to_link(int interface, char *frame_data, size_t length);
  */
 int recv_from_any_link(char *frame_data, size_t *length);
 
+
+/* Returns the name of an itnerface */
+char *get_interface_name(int interface);
+
 char *get_interface_ip(int interface);
 
 /**

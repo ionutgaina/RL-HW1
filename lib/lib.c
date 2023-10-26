@@ -112,6 +112,24 @@ char *get_interface_ip(int interface)
 	return inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr);
 }
 
+char *get_interface_name(int interface)
+{
+	struct ifreq ifr;
+	int ret;
+	if (interface == 0)
+		sprintf(ifr.ifr_name, "rr-0-1");
+	else {
+		sprintf(ifr.ifr_name, "r-%u", interface - 1);
+	}
+
+  ifr.ifr_ifindex = interface + 2;
+	ret = ioctl(interfaces[interface], SIOCGIFNAME, &ifr);
+	DIE(ret == -1, "ioctl SIOCGIFNAME");
+  char *int_name = malloc(256);
+  strncpy(int_name, ifr.ifr_name, 256);
+  return int_name;
+}
+
 void get_interface_mac(int interface, uint8_t *mac)
 {
 	struct ifreq ifr;

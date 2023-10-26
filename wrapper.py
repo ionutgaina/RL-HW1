@@ -15,8 +15,11 @@ lib.send_to_link.restype = ctypes.c_int
 lib.init.argtypes = (ctypes.c_int, ctypes.POINTER(ctypes.c_char_p))
 lib.init.restype = ctypes.c_int
 
-lib.get_interface_mac.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_uint8)]
+lib.get_interface_mac.argtypes = (ctypes.c_int, ctypes.POINTER(ctypes.c_uint8))
 lib.get_interface_mac.restype = None
+
+lib.get_interface_name.argtypes = [ctypes.c_int]
+lib.get_interface_name.restype = ctypes.c_char_p
 
 def init(argv_p):
     # Get the command-line arguments using sys.argv
@@ -65,3 +68,8 @@ def get_switch_mac():
     lib.get_interface_mac(0, mac_buffer)
     
     return bytes(mac_buffer)
+
+# Returns the name of an interface, used for the VLAN subtask
+def get_interface_name(interface):
+
+    return lib.get_interface_name(interface).decode('utf-8')
