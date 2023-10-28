@@ -15,19 +15,19 @@ def parse_ethernet_header(data):
     # Extract ethertype. Under 802.1Q, this may be the bytes from the VLAN TAG
     ether_type = (data[12] << 8) + data[13]
 
-    vlan_id = None
+    vlan_id = -1
     # Check for VLAN tag (0x8100 in network byte order is b'\x81\x00')
-    if ether_type == b'\x81\x00':
-        vlan_tci = int.from_bytes(frame[14:16], byteorder='big')
+    if ether_type == 0x8200:
+        vlan_tci = int.from_bytes(data[14:16], byteorder='big')
         vlan_id = vlan_tci & 0x0FFF  # extract the 12-bit VLAN ID
-        ether_type = (frame[16] << 8) + frame[17]
+        ether_type = (data[16] << 8) + data[17]
 
     return dest_mac, src_mac, ether_type, vlan_id
 
 def create_vlan_tag(vlan_id):
     # 0x8100 for the Ethertype for 802.1Q
     # vlan_id & 0x0FFF ensures that only the last 12 bits are used
-    return struct.pack('!H', 0x8100) + struct.pack('!H', vlan_id & 0x0FFF)
+    return struct.pack('!H', 0x8200) + struct.pack('!H', vlan_id & 0x0FFF)
 
 def send_bdpu_every_sec():
     while True:
