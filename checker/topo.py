@@ -367,7 +367,6 @@ def main(run_tests=False, run=None):
         total_points = 0
         print("{:=^85}\n".format(" Running tests "))
         for (testname, test) in tests.TESTS.items():
-            
             if test.categories[0] not in viz_cats:
                 print(">> Running tests for {}".format(test.categories[0]))
                 print("")
