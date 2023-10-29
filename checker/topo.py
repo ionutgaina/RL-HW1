@@ -229,18 +229,19 @@ class FullNM(object):
 
             if i in wo:
                 continue
+
             out = info.get("out_file", i)
             err = info.get("err_file", i)
             rtable = info.get("rtable", i)
             rname = "switch{}".format(i)
 
-            if int(router.cmd("ps -aux | grep {} | wc -l".format(rname))) == 1:
+            #if int(router.cmd("ps -aux | grep {} | wc -l".format(rname))) == 1:
                 #cmd = 'bash -c "exec -a {} ./switch {} > {} 2> {} &"'.format(rname, ifaces,
                  #                               out, err)
-                cmd = 'bash -c "exec -a {} python3 switch.py {} $(ifconfig -a | grep -o \'^[^ :]*\' | grep -v \'lo\' | tr \'\n\' \' \') > {} 2> {} &"'.format(rname, i, out, err)
-                print("[INFO] Starting {}".format(rname))
-                router.cmd(cmd)
-        time.sleep(3)
+            cmd = 'bash -c "exec -a {} python3 switch.py {} $(ifconfig -a | grep -o \'^[^ :]*\' | grep -v \'lo\' | tr \'\n\' \' \') > {} 2> {} &"'.format(rname, i, out, err)
+            print("[INFO] Starting {}".format(rname))
+            router.cmd(cmd)
+        time.sleep(4)
 
     def setup_capture(self, testname, log):
         nr = len(self.routers)
@@ -372,6 +373,9 @@ def main(run_tests=False, run=None):
                 print("")
                 viz_cats.append(test.categories[0])
                 points[test.categories[0]] = 0
+                if test.categories[0] == '3. STP':
+                    nm.start_routers([0,1])
+
 
             skipped = False
 

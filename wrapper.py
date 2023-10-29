@@ -66,7 +66,7 @@ def get_switch_mac():
     # Call the get_inferface mac function.
     # Our switch should have only 1 MAC and such
     # we return the MAC from interface 0
-    lib.get_interface_mac(0, mac_buffer)
+    lib.get_interface_mac(1, mac_buffer)
     
     return bytes(mac_buffer)
 

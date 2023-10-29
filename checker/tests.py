@@ -213,6 +213,42 @@ def icmp_check_arrival_p(testname, packets):
     return res
 
 
+def bad_mac_icmp_a(testname):
+    hs = TESTS[testname].host_s
+    hr = TESTS[testname].host_r
+    hp = TESTS[testname].host_p
+    router = TESTS[testname].router
+    r_mac = info.get("host_mac", hp)
+    s_mac = info.get("host_mac", hs)
+    s_ip = info.get("host_ip", hs + 1)
+    target_ip = info.get("host_ip", hp + 1)
+
+    return [Ether(src=s_mac, dst='aa:bb:cc:dd:ee:00') / IP(src=s_ip, dst=target_ip) / ICMP()]
+
+def bad_icmp_check_arrival_p(testname, packets):
+    hs = TESTS[testname].host_s
+    router = TESTS[testname].router
+    hr = TESTS[testname].host_r
+
+    origpackets = packets.copy()
+    res, packets = cull_dull_packets(hr, router, packets)
+
+    k = 0
+    res = False
+    for p in packets:
+        if ICMP in p:
+            k = k + 1
+
+    if k != 1:
+        res = False
+
+    if res is False:
+        error("Too many ICMPs arrived at the destination. Meaning we have a cycle. {} packets".format(k))
+        dump_packets(origpackets)
+        return False
+
+    return res
+
 def icmp_check_no_arrival_p(testname, packets):
     hs = TESTS[testname].host_s
     router = TESTS[testname].router
@@ -236,7 +272,7 @@ def icmp_check_no_arrival_p(testname, packets):
     return res
 
 
-def icmp_check_arrival_p_tagged(testname, packets):
+def icmp_check_arrival_p(testname, packets):
     hs = TESTS[testname].host_s
     router = TESTS[testname].router
     hr = TESTS[testname].host_r
@@ -247,11 +283,8 @@ def icmp_check_arrival_p_tagged(testname, packets):
     res = False
     for p in packets:
         if ICMP in p:
-            # Check if we have tagging active
-            if p.haslayer(Dot1Q):
-                res = True
+            res = True
             break
-
 
     if res is False:
         error("ICMP has not arrived at destination")
@@ -259,6 +292,7 @@ def icmp_check_arrival_p_tagged(testname, packets):
         return False
 
     return res
+
 
 Test = namedtuple("Test", ["host_s", "host_r", "router", "active_fn", "passive_fn", "categories", "host_p"])
 TESTS = OrderedDict([
@@ -274,6 +308,12 @@ TESTS = OrderedDict([
         ("ICMP_3_1_NOT_ARRIVES_1_VLAN", Test(3, 1, 1, icmp_a, icmp_check_no_arrival_p, ["2. VLAN"], 1)),
         ("ICMP_3_2_ARRIVES_2_VLAN", Test(3, 2, 0, icmp_a, icmp_check_arrival_p, ["2. VLAN"], 2)),
         ("ICMP_0_3_ARRIVES_3_VLAN", Test(0, 3, 0, icmp_a, icmp_check_arrival_p, ["2. VLAN"], 3)),
+
+        # STP tests
+        ("ICMP_4_2_ARRIVES_2_STP", Test(4, 2, 0, icmp_a, icmp_check_arrival_p, ["3. STP"], 2)),
+        ("ICMP_5_1_ARRIVES_1_STP", Test(5, 1, 0, icmp_a, icmp_check_arrival_p, ["3. STP"], 1)),
+        ("ICMP_5_1_BAD_MAC_ARRIVES_1_ONCE_STP", Test(5, 1, 0, bad_mac_icmp_a, bad_icmp_check_arrival_p, ["3. STP"], 1)),
+
         ])
 
 CATEGORY_POINTS = {
