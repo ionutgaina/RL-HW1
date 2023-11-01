@@ -223,7 +223,7 @@ def bad_mac_icmp_a(testname):
     s_ip = info.get("host_ip", hs + 1)
     target_ip = info.get("host_ip", hp + 1)
 
-    return [Ether(src=s_mac, dst='aa:bb:cc:dd:ee:00') / IP(src=s_ip, dst=target_ip) / ICMP()]
+    return [Ether(src=s_mac, dst='de:ad:be:ef:00:09') / IP(src=s_ip, dst=target_ip) / ICMP()]
 
 def bad_icmp_check_arrival_p(testname, packets):
     hs = TESTS[testname].host_s
@@ -234,7 +234,7 @@ def bad_icmp_check_arrival_p(testname, packets):
     res, packets = cull_dull_packets(hr, router, packets)
 
     k = 0
-    res = False
+    res = True
     for p in packets:
         if ICMP in p:
             k = k + 1
@@ -310,9 +310,9 @@ TESTS = OrderedDict([
         ("ICMP_0_3_ARRIVES_3_VLAN", Test(0, 3, 0, icmp_a, icmp_check_arrival_p, ["2. VLAN"], 3)),
 
         # STP tests
-        ("ICMP_4_2_ARRIVES_2_STP", Test(4, 2, 0, icmp_a, icmp_check_arrival_p, ["3. STP"], 2)),
-        ("ICMP_5_1_ARRIVES_1_STP", Test(5, 1, 0, icmp_a, icmp_check_arrival_p, ["3. STP"], 1)),
-        ("ICMP_5_1_BAD_MAC_ARRIVES_1_ONCE_STP", Test(5, 1, 0, bad_mac_icmp_a, bad_icmp_check_arrival_p, ["3. STP"], 1)),
+        ("ICMP_4_1_ARRIVES_1_STP", Test(4, 1, 0, icmp_a, icmp_check_arrival_p, ["3. STP"], 1)),
+        ("ICMP_5_0_ARRIVES_0_STP", Test(5, 0, 0, icmp_a, icmp_check_arrival_p, ["3. STP"], 0)),
+        ("ICMP_5_0_BAD_MAC_ARRIVES_0_ONCE_STP", Test(5, 0, 0, bad_mac_icmp_a, bad_icmp_check_arrival_p, ["3. STP"], 0)),
 
         ])
 
