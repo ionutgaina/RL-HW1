@@ -29,6 +29,9 @@ def create_vlan_tag(vlan_id):
     # vlan_id & 0x0FFF ensures that only the last 12 bits are used
     return struct.pack('!H', 0x8200) + struct.pack('!H', vlan_id & 0x0FFF)
 
+def remove_vlan_tag(data):
+    return data[0:12] + data[16:]
+
 def send_bdpu_every_sec():
     while True:
         # TODO Send BDPU every second if necessary
@@ -36,7 +39,6 @@ def send_bdpu_every_sec():
 
 def is_unicast(mac: str):
     mac_split = mac.split(':')
-    return int(mac_split[0], 16) & 0x01 == 0
     
     
 
@@ -58,6 +60,25 @@ def main():
     # Printing interface names
     for i in interfaces:
         print(get_interface_name(i))
+        
+    file_path = './configs/switch' + switch_id + '.cfg'
+    
+    # Read config file
+    with open(file_path) as f:
+        lines = f.readlines()
+    
+    switch_priority = int(lines[0].strip())
+    
+    print("Switch priority: " + str(switch_priority))
+    
+    interfaces_vlan = {}
+    
+    for line in lines[1:]:
+        line = line.strip().split(' ')
+        interface = line[0]
+        vlan = line[1]
+        interfaces_vlan[interface] = vlan
+        print("Interface " + interface + " is in VLAN " + vlan)
 
     MAC_TABLE = {}
 
@@ -83,7 +104,6 @@ def main():
 
         print("Received frame of size {} on interface {}".format(length, interface), flush=True)
 
-        # TODO: Implement forwarding with learning
         MAC_TABLE[src_mac] = interface
 
         if is_unicast(dest_mac):
