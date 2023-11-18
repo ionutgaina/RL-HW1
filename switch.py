@@ -42,9 +42,6 @@ def is_unicast(mac: str):
     return int(mac_split[0], 16) & 0x01 == 0
     
 def is_trunk(interface_list, interface):
-    print("GET INTERFACE NAME: " + get_interface_name(interface))
-    print("GET INTERFACE LIST: " + str(interface_list))
-    print("GET INTERFACE VLAN: " + str(interface_list[get_interface_name(interface)]))
     return interface_list[get_interface_name(interface)] == "T"
 
 def manage_vlan(interface, data, length, interfaces_vlan, vlan_id):
@@ -52,15 +49,10 @@ def manage_vlan(interface, data, length, interfaces_vlan, vlan_id):
     if(is_trunk(interfaces_vlan, interface)):
         data = data[0:12] + create_vlan_tag(vlan_id) + data[12:]
         length += 4
-        print("Added VLAN tag to send")
         send_to_link(interface, data, length)
     else:
         if(int(interfaces_vlan[get_interface_name(interface)]) == vlan_id):
-            print("Same VLAN send")
             send_to_link(interface, data, length)
-        else:
-            print("Different VLAN send" + str(interfaces_vlan[get_interface_name(interface)]) + " " + str(vlan_id))
-            
 
 def main():
     # init returns the max interface number. Our interfaces
@@ -129,10 +121,8 @@ def main():
         if interfaces_vlan[get_interface_name(interface)] == "T":
             data = remove_vlan_tag(data)
             length -= 4
-            print("Removed VLAN tag")
         else:
             vlan_id = int(interfaces_vlan[get_interface_name(interface)])
-            print("GET VLAN ID: " + str(vlan_id))
             
             
         
@@ -148,9 +138,7 @@ def main():
                 if i != interface:
                     manage_vlan(i, data, length, interfaces_vlan, vlan_id)
         
-
-
-        # TODO: Implement VLAN support
+        
         # TODO: Implement STP support
 
         # data is of type bytes.
