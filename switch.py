@@ -34,6 +34,12 @@ def send_bdpu_every_sec():
         # TODO Send BDPU every second if necessary
         time.sleep(1)
 
+def is_unicast(mac: str):
+    mac_split = mac.split(':')
+    return int(mac_split[0], 16) & 0x01 == 0
+    
+    
+
 def main():
     # init returns the max interface number. Our interfaces
     # are 0, 1, 2, ..., init_ret value + 1
@@ -52,6 +58,8 @@ def main():
     # Printing interface names
     for i in interfaces:
         print(get_interface_name(i))
+
+    MAC_TABLE = {}
 
     while True:
         # Note that data is of type bytes([...]).
@@ -76,6 +84,22 @@ def main():
         print("Received frame of size {} on interface {}".format(length, interface), flush=True)
 
         # TODO: Implement forwarding with learning
+        MAC_TABLE[src_mac] = interface
+
+        if is_unicast(dest_mac):
+            if dest_mac in MAC_TABLE:
+                send_to_link(MAC_TABLE[dest_mac], data, length)
+            else:
+                for i in interfaces:
+                    if i != interface:
+                        send_to_link(i, data, length)
+        else:
+            for i in interfaces:
+                if i != interface:
+                    send_to_link(i, data, length)
+        
+
+
         # TODO: Implement VLAN support
         # TODO: Implement STP support
 
