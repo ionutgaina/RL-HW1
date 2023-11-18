@@ -39,8 +39,28 @@ def send_bdpu_every_sec():
 
 def is_unicast(mac: str):
     mac_split = mac.split(':')
+    return int(mac_split[0], 16) & 0x01 == 0
     
-    
+def is_trunk(interface_list, interface):
+    print("GET INTERFACE NAME: " + get_interface_name(interface))
+    print("GET INTERFACE LIST: " + str(interface_list))
+    print("GET INTERFACE VLAN: " + str(interface_list[get_interface_name(interface)]))
+    return interface_list[get_interface_name(interface)] == "T"
+
+def manage_vlan(interface, data, length, interfaces_vlan, vlan_id):
+    # VLAN(sending)
+    if(is_trunk(interfaces_vlan, interface)):
+        data = data[0:12] + create_vlan_tag(vlan_id) + data[12:]
+        length += 4
+        print("Added VLAN tag to send")
+        send_to_link(interface, data, length)
+    else:
+        if(int(interfaces_vlan[get_interface_name(interface)]) == vlan_id):
+            print("Same VLAN send")
+            send_to_link(interface, data, length)
+        else:
+            print("Different VLAN send" + str(interfaces_vlan[get_interface_name(interface)]) + " " + str(vlan_id))
+            
 
 def main():
     # init returns the max interface number. Our interfaces
@@ -78,8 +98,7 @@ def main():
         interface = line[0]
         vlan = line[1]
         interfaces_vlan[interface] = vlan
-        print("Interface " + interface + " is in VLAN " + vlan)
-
+        
     MAC_TABLE = {}
 
     while True:
@@ -105,18 +124,29 @@ def main():
         print("Received frame of size {} on interface {}".format(length, interface), flush=True)
 
         MAC_TABLE[src_mac] = interface
-
+        
+        # VLAN(receiving)
+        if interfaces_vlan[get_interface_name(interface)] == "T":
+            data = remove_vlan_tag(data)
+            length -= 4
+            print("Removed VLAN tag")
+        else:
+            vlan_id = int(interfaces_vlan[get_interface_name(interface)])
+            print("GET VLAN ID: " + str(vlan_id))
+            
+            
+        
         if is_unicast(dest_mac):
             if dest_mac in MAC_TABLE:
-                send_to_link(MAC_TABLE[dest_mac], data, length)
+                manage_vlan(MAC_TABLE[dest_mac], data, length, interfaces_vlan, vlan_id)
             else:
                 for i in interfaces:
                     if i != interface:
-                        send_to_link(i, data, length)
+                        manage_vlan(i, data, length, interfaces_vlan, vlan_id)
         else:
             for i in interfaces:
                 if i != interface:
-                    send_to_link(i, data, length)
+                    manage_vlan(i, data, length, interfaces_vlan, vlan_id)
         
 
 
