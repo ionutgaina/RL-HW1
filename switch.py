@@ -41,18 +41,24 @@ def is_trunk(interface):
 
 def manage_vlan(interface, data, length, interfaces_vlan, vlan_id):
     # VLAN(sending)
+    if (ports[interface] == "BLOCKING"):
+        print("Port " + get_interface_name(interface) + " is BLOCKING")
+        return
+    
     if(is_trunk(interface)):
         data = data[0:12] + create_vlan_tag(vlan_id) + data[12:]
         length += 4
         send_to_link(interface, data, length)
+        print("Sent to switch " + get_interface_name(interface))
     else:
         if(int(interfaces_vlan[get_interface_name(interface)]) == vlan_id):
             send_to_link(interface, data, length)
+            print("Sent to host " + get_interface_name(interface))
             
 def manage_stp(interface):
-            if(is_trunk(interface)):
-                frame, length = create_stp_frame(root_switch_priority, 0, switch_priority)
-                send_to_link(interface, frame, length) 
+    if(is_trunk(interface)):
+        frame, length = create_stp_frame(root_bridge_id, root_path_cost, switch_priority)
+        send_to_link(interface, frame, length) 
         
 def create_stp_frame(root_bridge_id, root_path_cost, sender_bridge_id):
     bpdu_config = struct.pack('!QQQ', root_bridge_id, root_path_cost, sender_bridge_id)
@@ -70,7 +76,7 @@ def parse_stp_frame(data):
     root_bridge_id, root_path_cost, sender_bridge_id = struct.unpack('!QQQ', bdpu_config)
     return root_bridge_id, root_path_cost, sender_bridge_id
             
-def send_bdpu_every_sec(interfaces):
+def send_bdpu_every_sec():
     while True:
         if(is_root):
             for i in interfaces:
@@ -83,6 +89,7 @@ def main():
     switch_id = sys.argv[1]
 
     num_interfaces = wrapper.init(sys.argv[2:])
+    global interfaces
     interfaces = range(0, num_interfaces)
 
     print("# Starting switch with id {}".format(switch_id), flush=True)
@@ -97,14 +104,16 @@ def main():
     # STP config
     global switch_priority 
     switch_priority = int(lines[0].strip())
-    global root_switch_priority 
-    root_switch_priority = switch_priority
+    global root_bridge_id 
+    root_bridge_id = switch_priority
     global root_path_cost
     root_path_cost = 0
     global is_root 
     is_root = True
     global ports
-    ports = []
+    ports = {}
+    global root_port
+    root_port = None
     
     # VLAN config
     global interfaces_vlan
@@ -120,20 +129,22 @@ def main():
         
     
     # Create and start a new thread that deals with sending BDPU
-    t = threading.Thread(target=send_bdpu_every_sec, args=(interfaces,))
+    t = threading.Thread(target=send_bdpu_every_sec)
     t.start()
 
     # Printing interface names
     for i in interfaces:
         print(get_interface_name(i))
         
+    global MAC_TABLE
     MAC_TABLE = {}
     
     # STP init
     for i in interfaces:
-        if (is_trunk(i)):
-            ports[i] = "BLOCKING"
+        ports[i] = "DESIGNATED"
 
+    
+    
     while True:
         # Note that data is of type bytes([...]).
         # b1 = bytes([72, 101, 108, 108, 111])  # "Hello"
@@ -159,12 +170,12 @@ def main():
         MAC_TABLE[src_mac] = interface
         
         # VLAN(receiving)
-        if interfaces_vlan[get_interface_name(interface)] == "T":
-            if (ethertype == 0x8100):
-                data = remove_vlan_tag(data)
-                length -= 4
-        else:
-            vlan_id = int(interfaces_vlan[get_interface_name(interface)])
+        if dest_mac != "01:80:c2:00:00:00":
+            if interfaces_vlan[get_interface_name(interface)] == "T":
+                    data = remove_vlan_tag(data)
+                    length -= 4
+            else:
+                vlan_id = int(interfaces_vlan[get_interface_name(interface)])
             
             
         
@@ -182,16 +193,46 @@ def main():
                         manage_vlan(i, data, length, interfaces_vlan, vlan_id)
             else:
                 print("STP frame received")
-                root_bridge_id, root_path_cost, sender_bridge_id = parse_stp_frame(data)
-                print("Root bridge id: " + str(root_bridge_id))
-                print("Root path cost: " + str(root_path_cost))
-                print("Sender bridge id: " + str(sender_bridge_id))
+                bdpu_root_bridge_id, bdpu_root_path_cost, bdpu_sender_bridge_id = parse_stp_frame(data)
+                if (bdpu_root_bridge_id < root_bridge_id):
+                    root_bridge_id = bdpu_root_bridge_id
+                    root_path_cost = bdpu_root_path_cost + 10
+                    
+                    if (root_port == None):
+                        for port in ports:
+                            if (is_trunk(port)):
+                                ports[port] = "BLOCKING"
+                        ports[interface] = "DESIGNATED"
+                        
+                    root_port = interface
+                    
+                    for i in interfaces:
+                        if (i != interface):
+                            manage_stp(i)
+                    
+                elif (bdpu_root_bridge_id == root_bridge_id):
+                    if (interface == root_port and bdpu_root_path_cost + 10 < root_path_cost):
+                        root_path_cost = bdpu_root_path_cost + 10
+                        
+                    elif (interface != root_port):
+                        if (bdpu_root_path_cost > root_path_cost):
+                            ports[interface] = "DESIGNATED"
                 
-        
-        
+                          
+                print(ports)
+                for port in ports:
+                    print("Port " + get_interface_name(port) + " is " + ports[port])
+                                    
         if (root_bridge_id == switch_priority):
+            is_root = True
             for port in ports:
                 ports[port] = "DESIGNATED"
+            root_port = None
+            root_path_cost = 0
+            print("I am root")
+            print(ports)
+        else:
+            is_root = False
                 
         # data is of type bytes.
         # send_to_link(i, data, length)

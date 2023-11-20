@@ -303,7 +303,7 @@ TESTS = OrderedDict([
         ("ICMP_0_2_NOT_ARRIVES_3", Test(0, 3, 0, icmp_a, icmp_check_no_arrival_p, ["1. learning"], 2)),
         ("ICMP_0_3_NOT_ARRIVES_2", Test(0, 2, 0, icmp_a, icmp_check_no_arrival_p, ["1. learning"], 3)),
 
-        # VLAN tests
+        # # VLAN tests
         ("ICMP_0_1_NOT_ARRIVES_1_VLAN", Test(0, 1, 1, icmp_a, icmp_check_no_arrival_p, ["2. VLAN"], 1)),
         ("ICMP_3_1_NOT_ARRIVES_1_VLAN", Test(3, 1, 1, icmp_a, icmp_check_no_arrival_p, ["2. VLAN"], 1)),
         ("ICMP_3_2_ARRIVES_2_VLAN", Test(3, 2, 0, icmp_a, icmp_check_arrival_p, ["2. VLAN"], 2)),
