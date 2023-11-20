@@ -32,28 +32,51 @@ def create_vlan_tag(vlan_id):
 def remove_vlan_tag(data):
     return data[0:12] + data[16:]
 
-def send_bdpu_every_sec():
-    while True:
-        # TODO Send BDPU every second if necessary
-        time.sleep(1)
-
 def is_unicast(mac: str):
     mac_split = mac.split(':')
     return int(mac_split[0], 16) & 0x01 == 0
     
-def is_trunk(interface_list, interface):
-    return interface_list[get_interface_name(interface)] == "T"
+def is_trunk(interface):
+    return interfaces_vlan[get_interface_name(interface)] == "T"
 
 def manage_vlan(interface, data, length, interfaces_vlan, vlan_id):
     # VLAN(sending)
-    if(is_trunk(interfaces_vlan, interface)):
+    if(is_trunk(interface)):
         data = data[0:12] + create_vlan_tag(vlan_id) + data[12:]
         length += 4
         send_to_link(interface, data, length)
     else:
         if(int(interfaces_vlan[get_interface_name(interface)]) == vlan_id):
             send_to_link(interface, data, length)
-
+            
+def manage_stp(interface):
+            if(is_trunk(interface)):
+                frame, length = create_stp_frame(root_switch_priority, 0, switch_priority)
+                send_to_link(interface, frame, length) 
+        
+def create_stp_frame(root_bridge_id, root_path_cost, sender_bridge_id):
+    bpdu_config = struct.pack('!QQQ', root_bridge_id, root_path_cost, sender_bridge_id)
+    bdpu_header = struct.pack('!HBB', 0x0000, 0x00, 0x00)
+    llc_header = struct.pack('!3s', b'\x42\x42\x03')
+    length = len(bpdu_config) + len(bdpu_header) + len(llc_header)
+    ethernet_header = struct.pack('!6s6sH', b'\x01\x80\xc2\x00\x00\x00', get_switch_mac(), length)
+    frame = ethernet_header + llc_header + bdpu_header + bpdu_config
+    length = len(frame)
+    return frame, length
+    
+def parse_stp_frame(data):
+    bdpu_padding = 14 + 4 + 3
+    bdpu_config = data[bdpu_padding: bdpu_padding + 24]
+    root_bridge_id, root_path_cost, sender_bridge_id = struct.unpack('!QQQ', bdpu_config)
+    return root_bridge_id, root_path_cost, sender_bridge_id
+            
+def send_bdpu_every_sec(interfaces):
+    while True:
+        if(is_root):
+            for i in interfaces:
+                manage_stp(i)     
+        time.sleep(1)
+          
 def main():
     # init returns the max interface number. Our interfaces
     # are 0, 1, 2, ..., init_ret value + 1
@@ -65,25 +88,29 @@ def main():
     print("# Starting switch with id {}".format(switch_id), flush=True)
     print("[INFO] Switch MAC", ':'.join(f'{b:02x}' for b in get_switch_mac()))
 
-    # Create and start a new thread that deals with sending BDPU
-    t = threading.Thread(target=send_bdpu_every_sec)
-    t.start()
-
-    # Printing interface names
-    for i in interfaces:
-        print(get_interface_name(i))
-        
     file_path = './configs/switch' + switch_id + '.cfg'
     
     # Read config file
     with open(file_path) as f:
         lines = f.readlines()
     
+    # STP config
+    global switch_priority 
     switch_priority = int(lines[0].strip())
+    global root_switch_priority 
+    root_switch_priority = switch_priority
+    global root_path_cost
+    root_path_cost = 0
+    global is_root 
+    is_root = True
+    global ports
+    ports = []
     
-    print("Switch priority: " + str(switch_priority))
-    
+    # VLAN config
+    global interfaces_vlan
     interfaces_vlan = {}
+    
+
     
     for line in lines[1:]:
         line = line.strip().split(' ')
@@ -91,7 +118,21 @@ def main():
         vlan = line[1]
         interfaces_vlan[interface] = vlan
         
+    
+    # Create and start a new thread that deals with sending BDPU
+    t = threading.Thread(target=send_bdpu_every_sec, args=(interfaces,))
+    t.start()
+
+    # Printing interface names
+    for i in interfaces:
+        print(get_interface_name(i))
+        
     MAC_TABLE = {}
+    
+    # STP init
+    for i in interfaces:
+        if (is_trunk(i)):
+            ports[i] = "BLOCKING"
 
     while True:
         # Note that data is of type bytes([...]).
@@ -119,8 +160,9 @@ def main():
         
         # VLAN(receiving)
         if interfaces_vlan[get_interface_name(interface)] == "T":
-            data = remove_vlan_tag(data)
-            length -= 4
+            if (ethertype == 0x8100):
+                data = remove_vlan_tag(data)
+                length -= 4
         else:
             vlan_id = int(interfaces_vlan[get_interface_name(interface)])
             
@@ -134,13 +176,23 @@ def main():
                     if i != interface:
                         manage_vlan(i, data, length, interfaces_vlan, vlan_id)
         else:
-            for i in interfaces:
-                if i != interface:
-                    manage_vlan(i, data, length, interfaces_vlan, vlan_id)
+            if (dest_mac != "01:80:c2:00:00:00"):
+                for i in interfaces:
+                    if i != interface:
+                        manage_vlan(i, data, length, interfaces_vlan, vlan_id)
+            else:
+                print("STP frame received")
+                root_bridge_id, root_path_cost, sender_bridge_id = parse_stp_frame(data)
+                print("Root bridge id: " + str(root_bridge_id))
+                print("Root path cost: " + str(root_path_cost))
+                print("Sender bridge id: " + str(sender_bridge_id))
+                
         
         
-        # TODO: Implement STP support
-
+        if (root_bridge_id == switch_priority):
+            for port in ports:
+                ports[port] = "DESIGNATED"
+                
         # data is of type bytes.
         # send_to_link(i, data, length)
 
